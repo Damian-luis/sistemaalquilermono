@@ -2,26 +2,24 @@ import { db } from '../config/firebaseConfig';
 import { IUser } from '../interfaces';
 import { v4 as uuid } from 'uuid';
  
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, CollectionReference,deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, CollectionReference,deleteDoc,query,where } from 'firebase/firestore';
 
  
 const usersCollection = (): CollectionReference<IUser> => collection(db, 'Users') as CollectionReference<IUser>;
 
-export const addUser = async (user: IUser): Promise<IUser> => {
+export const addUser = async (userDni:string): Promise<IUser> => {
   try {
     const userId = uuid();
     const cleanUserData = {
       id: userId,
-      dni: user.dni, 
-      available_minutes: user.available_minutes,
+      dni: userDni, 
+      available_minutes: 0,
+      historicMinutesRented:0,
+      rentedScooterId:null,
+      bonusMinutes:0,
+      punishment:false
     };
-    console.log(cleanUserData)
-    const example={
-      id:"4564",
-      dni:"44564",
-      available_minutes:455
-    }
-    await setDoc(doc(usersCollection(), userId), example);
+    await setDoc(doc(usersCollection(), userId),cleanUserData);
     return cleanUserData
   } catch (error) {
     console.log(error)
@@ -63,6 +61,38 @@ export const getUserById = async (userId: string): Promise<IUser | undefined> =>
   } catch (error) {
     console.error('Error getting user by id:', error);
     throw new Error('Error getting user by id');
+  }
+};
+
+export const getUserByDni = async (dni: string): Promise<IUser | undefined> => {
+  try {
+    const q = query(usersCollection(), where("dni", "==", dni));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const docSnap = querySnapshot.docs[0];
+      return docSnap.data() as IUser;
+    } else {
+      return undefined;
+    }
+  } catch (error) {
+    console.error('Error getting user by DNI:', error);
+    throw new Error('Error getting user by DNI');
+  }
+};
+
+export const updateUserByDni = async (dni: string, updatedUser: Partial<IUser>): Promise<void> => {
+  try {
+    const q = query(usersCollection(), where("dni", "==", dni));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const userId = querySnapshot.docs[0].id;
+      await setDoc(doc(usersCollection(), userId), updatedUser, { merge: true });
+    } else {
+      throw new Error('User not found');
+    }
+  } catch (error) {
+    console.error('Error updating user by DNI:', error);
+    throw new Error('Error updating user by DNI');
   }
 };
 

@@ -5,7 +5,7 @@ import { IStation } from "../interfaces";
 
 async function addStationC(req: Request, res: Response): Promise<void> {
   try {
-    const stationData: IStation = req.body;
+    const stationData: IStation = req.body.station;
     const station = await addStation(stationData);
     res.status(HTTP_CODES.SUCCESS).json({ station });
   } catch (error: any) {

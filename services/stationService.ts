@@ -1,7 +1,7 @@
 import { db } from '../config/firebaseConfig';
 import { IStation } from '../interfaces';
 import { v4 as uuidv4 } from 'uuid';
-import { collection, addDoc, getDocs, updateDoc, doc, getDoc, deleteDoc,setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc, doc, getDoc, deleteDoc,setDoc,arrayUnion } from 'firebase/firestore';
 
 export const addStation = async (station: IStation): Promise<IStation> => {
   try {
@@ -25,13 +25,16 @@ export const getStations = async (): Promise<IStation[]> => {
   }
 };
 
-export const updateStation = async (stationId: string, updatedStation: Partial<IStation>): Promise<void> => {
+export const updateStation = async (stationId: string, newScooter: any): Promise<void> => {
   try {
-    await updateDoc(doc(collection(db, 'Stations'), stationId), updatedStation);
+    await updateDoc(doc(collection(db, 'Stations'), stationId), {
+      scooter: arrayUnion(newScooter.scooter)
+    });
   } catch (error) {
     console.error('Error updating station:', error);
     throw new Error('Error updating station');
   }
+
 };
 
 export const getStationById = async (stationId: string): Promise<IStation | undefined> => {

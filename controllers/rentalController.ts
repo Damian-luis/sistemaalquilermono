@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { HTTP_CODES, RESPONSE_MESSAGES } from "../constant/index";
-import { addRental, getRentalById, getRentals, updateRental, deleteRental } from "../services/rentalService";
+import { addRental, getRentalById, getRentals, updateRental, deleteRental, getRentalsByUserDni } from "../services/rentalService";
 import { IRental } from "../interfaces";
 
 async function addRentalC(req: Request, res: Response): Promise<void> {
@@ -15,9 +15,27 @@ async function addRentalC(req: Request, res: Response): Promise<void> {
 }
 
 async function getRentalByIdC(req: Request, res: Response): Promise<void> {
-  const rentalId = req.params.rentalId;
+  const userDni = req.params.userId
   try {
-    const rental = await getRentalById(rentalId);
+    const rental = await getRentalById(userDni);
+    if (rental) {
+      res.status(HTTP_CODES.SUCCESS).json({ rental });
+    } else {
+      res.status(HTTP_CODES.NOT_FOUND).json({ error: RESPONSE_MESSAGES.RENTAL_NOT_FOUND });
+    }
+  } catch (error: any) {
+    console.error('Error getting rental by id:', error);
+    res.status(HTTP_CODES.INTERNAL_SERVER_ERROR).json({ error: RESPONSE_MESSAGES.INTERNAL_SERVER_ERROR });
+  }
+}
+
+async function getRentalByDniC(req: Request, res: Response): Promise<void> {
+  const userDni = req.params.userDni
+  console.log("entra a controler de rental")
+  console.log(userDni)
+  try {
+    const rental = await getRentalsByUserDni(userDni);
+    
     if (rental) {
       res.status(HTTP_CODES.SUCCESS).json({ rental });
     } else {
@@ -68,4 +86,4 @@ async function deleteRentalC(req: Request, res: Response): Promise<void> {
   }
 }
 
-export { addRentalC, getRentalByIdC, getRentalsC, updateRentalC, deleteRentalC };
+export { addRentalC, getRentalByIdC, getRentalsC, updateRentalC, deleteRentalC,getRentalByDniC };

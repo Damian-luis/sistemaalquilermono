@@ -7,18 +7,20 @@ const upload = multer({
     storage: storage });
 
     
-import { addUserC, getUserByIdC, getUsersC, updateUserC,deleteUserC } from "../controllers/userController";
+import { addUserC, getUserByIdC, getUsersC, updateUserC,deleteUserC,getUserByDniC,updateUserByDniC } from "../controllers/userController";
 import { addStationC, getStationByIdC, getStationsC, updateStationC, deleteStationC } from "../controllers/stationController";
 import { addScooterC, getScooterByIdC, getScootersC, updateScooterC, deleteScooterC } from "../controllers/scooterController";
-import { addRentalC, getRentalByIdC, getRentalsC, updateRentalC, deleteRentalC } from "../controllers/rentalController";
+import { addRentalC, getRentalByIdC, getRentalsC, updateRentalC, deleteRentalC, getRentalByDniC } from "../controllers/rentalController";
 import { addBonusOrPenaltyC, getBonusOrPenaltyByIdC, getBonusesAndPenaltiesC, updateBonusOrPenaltyC, deleteBonusOrPenaltyC } from "../controllers/bonusAndPenaltyController";
 
 //Rutas de usuario
 Router.post('/addUser', addUserC);
-Router.get('/user/:userId', getUserByIdC);
+//Router.get('/user/:userId', getUserByIdC);
 Router.get('/users', getUsersC);
-Router.put('/updateUser/:userId', updateUserC);
+//Router.put('/updateUser/:userId', updateUserC);
 Router.delete('/deleteUser/:userId', deleteUserC);
+Router.get('/user/:userDni', getUserByDniC);
+Router.put('/updateUser/:userDni', updateUserByDniC);
 
 // Rutas de estaciones
 Router.post('/stations/add', addStationC);
@@ -36,7 +38,8 @@ Router.delete('/scooters/delete/:scooterId', deleteScooterC);
 
 // Rutas de alquiler
 Router.post('/rentals/add', addRentalC);
-Router.get('/rentals/:rentalId', getRentalByIdC);
+Router.get('/rentals/:userId', getRentalByIdC);
+Router.get('/rentals/dni/:userDni', getRentalByDniC);
 Router.get('/rentals', getRentalsC);
 Router.put('/rentals/update/:rentalId', updateRentalC);
 Router.delete('/rentals/delete/:rentalId', deleteRentalC);

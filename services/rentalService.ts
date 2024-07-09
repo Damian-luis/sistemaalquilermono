@@ -1,10 +1,11 @@
 import { db } from '../config/firebaseConfig';
 import { IRental } from '../interfaces';
 import { v4 as uuidv4 } from 'uuid';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, CollectionReference,deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, CollectionReference,deleteDoc,query,where } from 'firebase/firestore';
 
 export const addRental = async (rental: IRental): Promise<IRental> => {
   try {
+    console.log(rental)
     const rentalId = uuidv4();
     const newRental = { ...rental, id: rentalId };
     await setDoc(doc(collection(db, 'Rentals'), rentalId), newRental);
@@ -36,11 +37,34 @@ export const updateRental = async (rentalId: string, updatedRental: Partial<IRen
 
 export const getRentalById = async (rentalId: string): Promise<IRental | undefined> => {
   try {
+    console.log("intenta entrar")
+    console.log(rentalId)
     const docSnapshot = await getDoc(doc(collection(db, 'Rentals'), rentalId));
     return docSnapshot.exists() ? (docSnapshot.data() as IRental) : undefined;
   } catch (error) {
+    console.log("obtuvo error")
     console.error('Error getting rental by id:', error);
     throw new Error('Error getting rental by id');
+  }
+};
+
+export const getRentalsByUserDni = async (userDni: string): Promise<IRental[]> => {
+  try {
+    const rentalsRef = collection(db, 'Rentals');
+    const querySnapshot = await getDocs(rentalsRef);
+    const rentals: IRental[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const rentalData = doc.data() as any;
+      if (rentalData.rental.user_dni === userDni) {
+        
+        rentals.push(rentalData);
+      }
+    });
+    return rentals;
+  } catch (error) {
+    console.error('Error getting rentals by user DNI:', error);
+    throw new Error('Error getting rentals by user DNI');
   }
 };
 

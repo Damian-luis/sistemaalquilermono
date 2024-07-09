@@ -19,7 +19,7 @@ export const HTTP_CODES = {
     SCOOTER_NOT_FOUND:'Scooter no encontrado',
     SCOOTER_UPDATED_SUCCESSFULLY:'Scooter actualizado exitosamente',
     SCOOTER_DELETED_SUCCESSFULLY:'Scooter eliminado exitosamente',
-    RENTAL_NOT_FOUND:'Alquiler no encontrado',
+    RENTAL_NOT_FOUND:'Alquiler/es no encontrado/s',
     RENTAL_UPDATED_SUCCESSFULLY:'Alquiler actualizado exitosamente',
     RENTAL_DELETED_SUCCESSFULLY:'Alquiler eliminado exitosamente',
     BONUS_OR_PENALTY_NOT_FOUND:'Bonus o multa no encontrada',
