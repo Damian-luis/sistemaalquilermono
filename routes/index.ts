@@ -10,7 +10,7 @@ const upload = multer({
 import { addUserC, getUserByIdC, getUsersC, updateUserC,deleteUserC,getUserByDniC,updateUserByDniC } from "../controllers/userController";
 import { addStationC, getStationByIdC, getStationsC, updateStationC, deleteStationC } from "../controllers/stationController";
 import { addScooterC, getScooterByIdC, getScootersC, updateScooterC, deleteScooterC } from "../controllers/scooterController";
-import { addRentalC, getRentalByIdC, getRentalsC, updateRentalC, deleteRentalC, getRentalByDniC } from "../controllers/rentalController";
+import { addRentalC, getRentalByIdC, getRentalsC, updateRentalC, deleteRentalC, getRentalByDniC,makeDevolutionC } from "../controllers/rentalController";
 import { addBonusOrPenaltyC, getBonusOrPenaltyByIdC, getBonusesAndPenaltiesC, updateBonusOrPenaltyC, deleteBonusOrPenaltyC } from "../controllers/bonusAndPenaltyController";
 
 //Rutas de usuario
@@ -43,6 +43,7 @@ Router.get('/rentals/dni/:userDni', getRentalByDniC);
 Router.get('/rentals', getRentalsC);
 Router.put('/rentals/update/:rentalId', updateRentalC);
 Router.delete('/rentals/delete/:rentalId', deleteRentalC);
+Router.put('/rentals/makeDevolution', makeDevolutionC);
 
 // Rutas de bonus y multas
 Router.post('/bonuses-and-penalties/add', addBonusOrPenaltyC);
