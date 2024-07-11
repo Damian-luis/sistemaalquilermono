@@ -5,7 +5,7 @@ import { IRental } from "../interfaces";
 
 async function addRentalC(req: Request, res: Response): Promise<void> {
   try {
-    const rentalData: IRental = req.body;
+    const rentalData: IRental = req.body.rental;
     const rental = await addRental(rentalData);
     res.status(HTTP_CODES.SUCCESS).json({ rental });
   } catch (error: any) {
@@ -31,8 +31,6 @@ async function getRentalByIdC(req: Request, res: Response): Promise<void> {
 
 async function getRentalByDniC(req: Request, res: Response): Promise<void> {
   const userDni = req.params.userDni
-  console.log("entra a controler de rental")
-  console.log(userDni)
   try {
     const rental = await getRentalsByUserDni(userDni);
     
