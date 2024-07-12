@@ -1,9 +1,9 @@
 import { db } from '../config/firebaseConfig';
 import { IUser } from '../interfaces';
 import { v4 as uuid } from 'uuid';
- 
+import { IRental } from '../interfaces';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, CollectionReference,deleteDoc,query,where } from 'firebase/firestore';
-
+import { format } from 'date-fns';
  
 const usersCollection = (): CollectionReference<IUser> => collection(db, 'Users') as CollectionReference<IUser>;
 
@@ -13,7 +13,7 @@ export const addUser = async (userDni:string): Promise<IUser> => {
     const cleanUserData = {
       id: userId,
       dni: userDni, 
-      available_minutes: 0,
+      available_minutes: 120,
       historicMinutesRented:0,
       rentedScooterId:null,
       bonusMinutes:0,
@@ -26,6 +26,68 @@ export const addUser = async (userDni:string): Promise<IUser> => {
     throw new Error('Error adding user');
   }
 };
+
+export const getDashBoard = async (): Promise<{ rentals: IRental[], users: IUser[], totalRentedMinutes: number, rentalsPerDay: { dayOfWeek: string, rentalsCount: number }[], averageRentalsPerDay: number }> => {
+  try {
+    const rentalsSnapshot = await getDocs(collection(db, 'Rentals'));
+    const rentals: IRental[] = [];
+    rentalsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      const usedMinutes = data.usedMinutes || 0;
+      rentals.push({ ...data, usedMinutes } as IRental);
+    });
+
+    const usersSnapshot = await getDocs(usersCollection());
+    const users: IUser[] = [];
+    usersSnapshot.forEach((doc) => {
+      users.push(doc.data() as IUser);
+    });
+
+    let totalRentedMinutes = 0;
+    rentals.forEach((rental) => {
+      totalRentedMinutes += rental.usedMinutes || 0;
+    });
+
+
+    const rentalsPerDayMap: { [dayOfWeek: string]: number } = {
+      'Monday': 0,
+      'Tuesday': 0,
+      'Wednesday': 0,
+      'Thursday': 0,
+      'Friday': 0,
+      'Saturday': 0,
+      'Sunday': 0,
+    };
+
+    rentals.forEach((rental) => {
+      const rentalDate = rental.rentalDate; 
+      if (rentalDate) {
+        const dayOfWeek = format(new Date(rentalDate), 'EEEE'); 
+        if (dayOfWeek && rentalsPerDayMap.hasOwnProperty(dayOfWeek)) {
+          rentalsPerDayMap[dayOfWeek]++;
+        }
+      }
+    });
+
+    const rentalsPerDay: { dayOfWeek: string, rentalsCount: number }[] = Object.keys(rentalsPerDayMap).map(dayOfWeek => ({
+      dayOfWeek,
+      rentalsCount: rentalsPerDayMap[dayOfWeek]
+    }));
+
+  
+    const daysWithRentals = rentalsPerDay.filter(day => day.rentalsCount > 0);
+    const averageRentalsPerDay = daysWithRentals.length > 0 ? rentals.length / daysWithRentals.length : 0;
+
+    return { rentals, users, totalRentedMinutes, rentalsPerDay, averageRentalsPerDay };
+  } catch (error) {
+    console.error('Error getting dashboard data:', error);
+    throw new Error('Error getting dashboard data');
+  }
+};
+
+
+
+
 
 export const getUsers = async (): Promise<IUser[]> => {
   try {

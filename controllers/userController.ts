@@ -2,7 +2,7 @@ import { Request,Response } from "express"
 import * as cache from 'memory-cache'
 import pdfParse from 'pdf-parse'
 import { HTTP_CODES, RESPONSE_MESSAGES } from '../constant/index';
-import { addUser,getUserById,getUsers,updateUser,deleteUser,getUserByDni,updateUserByDni } from "../services/userService";
+import { addUser,getUserById,getUsers,updateUser,deleteUser,getUserByDni,updateUserByDni,getDashBoard } from "../services/userService";
 
 
 
@@ -20,6 +20,21 @@ async function getUserByIdC(req: Request, res: Response): Promise<void> {
   const userId = req.params.userId;
   try {
     const user = await getUserById(userId);
+    if (user) {
+      res.status(HTTP_CODES.SUCCESS).json({ user });
+    } else {
+      res.status(HTTP_CODES.NOT_FOUND).json({ error: RESPONSE_MESSAGES.USER_NOT_FOUND });
+    }
+  } catch (error: any) {
+    console.error('Error getting user by id:', error);
+    res.status(HTTP_CODES.INTERNAL_SERVER_ERROR).json({ error: RESPONSE_MESSAGES.INTERNAL_SERVER_ERROR });
+  }
+}
+
+async function getDashBoardC(req: Request, res: Response): Promise<void> {
+  
+  try {
+    const user = await getDashBoard()
     if (user) {
       res.status(HTTP_CODES.SUCCESS).json({ user });
     } else {
@@ -98,4 +113,4 @@ async function deleteUserC(req: Request, res: Response): Promise<void> {
   }
 }
 
-export {addUserC,getUserByIdC,getUsersC,updateUserC,deleteUserC,getUserByDniC,updateUserByDniC}
+export {addUserC,getUserByIdC,getUsersC,updateUserC,deleteUserC,getUserByDniC,updateUserByDniC,getDashBoardC}

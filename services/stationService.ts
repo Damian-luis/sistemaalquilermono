@@ -6,7 +6,7 @@ import { collection, addDoc, getDocs, updateDoc, doc, getDoc, deleteDoc,setDoc,a
 export const addStation = async (station: IStation): Promise<IStation> => {
   try {
     const stationId = uuidv4();
-    const newStation = { ...station, id: stationId,scooter:[] };
+    const newStation = { ...station, id: stationId,scooters:[] };
     await setDoc(doc(collection(db, 'Stations'), stationId), newStation);
     return newStation;
   } catch (error) {
@@ -27,9 +27,8 @@ export const getStations = async (): Promise<IStation[]> => {
 
 export const updateStation = async (stationId: string, newScooter: any): Promise<void> => {
   try {
-    console.log(newScooter)
     await updateDoc(doc(collection(db, 'Stations'), stationId), {
-      scooter: arrayUnion(newScooter.scooter)
+      scooters: arrayUnion(newScooter.scooter)
     });
   } catch (error) {
     console.error('Error updating station:', error);

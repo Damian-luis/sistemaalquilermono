@@ -2,6 +2,9 @@ import { db } from '../config/firebaseConfig';
 import { IRental } from '../interfaces';
 import { v4 as uuidv4 } from 'uuid';
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, CollectionReference,deleteDoc,query,where } from 'firebase/firestore';
+import { IUser } from '../interfaces';
+import { IScooter } from '../interfaces';
+import { Timestamp } from 'firebase/firestore';
 const usersCollection = () => collection(db, 'Users');
 const stationsCollection = () => collection(db, 'Stations');
 
@@ -9,47 +12,104 @@ export const addRental = async (rental: IRental): Promise<IRental> => {
   try {
     const rentalId = uuidv4();
     const newRental = { ...rental, id: rentalId };
-    await setDoc(doc(collection(db, 'Rentals'), rentalId), newRental);
+
 
     const userQuery = query(usersCollection(), where("dni", "==", rental.user_dni));
     const querySnapshot = await getDocs(userQuery);
-    
+
     if (!querySnapshot.empty) {
       const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data() as IUser;
       const userId = userDoc.id;
 
-      await setDoc(doc(usersCollection(), userId), { rentedScooterId: rental.scooter_identifier }, { merge: true });
+      const currentDate = new Date();
+      const lastRentalDate = userData.lastRentalDate 
+        ? typeof userData.lastRentalDate === 'string'
+          ? new Date(userData.lastRentalDate).toISOString()
+          : userData.lastRentalDate.toDate().toISOString()
+        : new Date(0).toISOString();
+      const daysSinceLastRental = (currentDate.getTime() - new Date(lastRentalDate).getTime()) / (1000 * 60 * 60 * 24);
+      let availableMinutes = userData.available_minutes || 120;
+
+      if (daysSinceLastRental >= 7) {
+        availableMinutes = 120;
+        userData.bonusMinutes = 0;
+      }
+
+      if (availableMinutes <= 0) {
+        throw new Error('No hay tiempo de uso disponible. Debe esperar 7 días desde el último alquiler.');
+      }
+
+      const usedMinutes = rental.usedMinutes;
+      const remainingMinutes = availableMinutes - usedMinutes;
+
+      if (remainingMinutes < 0) {
+        throw new Error('No tienes suficientes minutos disponibles para este alquiler.');
+      }
+
+      if (rental.isBonusBeingUsed && rental.isBonusBeingUsed === true) {
+        userData.bonusMinutes = 0; 
+      } else {
+        if ((userData.rentalCount || 0) % 2 === 1) {
+          userData.bonusMinutes = (userData.bonusMinutes || 0) + 30;
+        }
+      }
+
+
+      await setDoc(doc(usersCollection(), userId), {
+        rentedScooterId: rental.scooter_identifier,
+        available_minutes: remainingMinutes,
+        bonusMinutes: userData.bonusMinutes,
+        lastRentalDate: currentDate.toISOString(),
+        rentalCount: (userData.rentalCount || 0) + 1,
+      }, { merge: true });
+
+
+      const stationDoc = await getDoc(doc(stationsCollection(), rental.start_station_id));
+      if (stationDoc.exists()) {
+        const stationData = stationDoc.data();
+        let scooters = stationData.scooters || [];
+
+
+        scooters = scooters.map((scooter: IScooter) => {
+          if (scooter.identifier === rental.scooter_identifier) {
+            return { ...scooter, status: 'in_use' };
+          }
+          return scooter;
+        });
+
+
+        await setDoc(doc(stationsCollection(), rental.start_station_id), { scooters }, { merge: true });
+      } else {
+        throw new Error('Station not found');
+      }
+
+      await setDoc(doc(collection(db, 'Rentals'), rentalId), newRental);
+
+      return newRental;
     } else {
       throw new Error('User not found');
     }
-
-    const stationDoc = await getDoc(doc(stationsCollection(), rental.start_station_id));
-    if (stationDoc.exists()) {
-      const stationData = stationDoc.data();
-      const scooters = stationData.scooter; 
-
-      const updatedScooters = scooters.map((scooter: any) => {
-        if (scooter.identifier === rental.scooter_identifier) {
-          return { ...scooter, status: 'in_use' };
-        }
-        return scooter;
-      });
-
-      await setDoc(doc(stationsCollection(), rental.start_station_id), { scooter: updatedScooters }, { merge: true });
-    } else {
-      throw new Error('Station not found');
-    }
-
-    return newRental;
   } catch (error) {
     console.error('Error adding rental:', error);
     throw new Error('Error adding rental');
   }
 };
 
+
+
+
+
+
+
+
+
 export const updateRentalForDevolution = async (rentalData: any): Promise<any> => {
   try {
     const { user_dni, id, scooter_identifier, station_name, station_name_devolution, usedMinutes } = rentalData;
+
+    const returnDate = new Date().toISOString();
+
 
     const userQuery = query(usersCollection(), where("dni", "==", user_dni));
     const userSnapshot = await getDocs(userQuery);
@@ -70,7 +130,7 @@ export const updateRentalForDevolution = async (rentalData: any): Promise<any> =
 
 
     const rentalRef = doc(collection(db, 'Rentals'), id);
-    await updateDoc(rentalRef, { status: 'completed' });
+    await updateDoc(rentalRef, { status: 'completed', returnDate });
 
 
     const stationQuery = query(stationsCollection(), where("name", "==", station_name));
@@ -78,12 +138,17 @@ export const updateRentalForDevolution = async (rentalData: any): Promise<any> =
     if (!stationSnapshot.empty) {
       const stationId = stationSnapshot.docs[0].id;
       const stationData = stationSnapshot.docs[0].data();
-      const scooters = stationData.scooter;
-
-      const updatedScooters = scooters.filter((scooter: any) => scooter.identifier !== scooter_identifier);
+      const scooters = stationData.scooters || []; 
 
 
-      await setDoc(doc(stationsCollection(), stationId), { scooter: updatedScooters }, { merge: true });
+      const updatedScooters = scooters.map((scooter: any) => {
+        if (scooter.identifier === scooter_identifier) {
+          return { ...scooter, status: 'available' }; 
+        }
+        return scooter;
+      });
+
+      await setDoc(doc(stationsCollection(), stationId), { scooters: updatedScooters }, { merge: true });
 
 
       const stationQueryDevolution = query(stationsCollection(), where("name", "==", station_name_devolution));
@@ -91,10 +156,11 @@ export const updateRentalForDevolution = async (rentalData: any): Promise<any> =
       if (!stationSnapshotDevolution.empty) {
         const stationIdDevolution = stationSnapshotDevolution.docs[0].id;
         const stationDataDevolution = stationSnapshotDevolution.docs[0].data();
-        const scootersDevolution = stationDataDevolution.scooter;
+        const scootersDevolution = stationDataDevolution.scooters || []; 
+
 
         const updatedScootersDevolution = [...scootersDevolution, { identifier: scooter_identifier, status: 'available' }];
-        await setDoc(doc(stationsCollection(), stationIdDevolution), { scooter: updatedScootersDevolution }, { merge: true });
+        await setDoc(doc(stationsCollection(), stationIdDevolution), { scooters: updatedScootersDevolution }, { merge: true });
       } else {
         throw new Error('Devolution station not found');
       }
@@ -107,6 +173,10 @@ export const updateRentalForDevolution = async (rentalData: any): Promise<any> =
     throw new Error('Error updating rental for devolution');
   }
 };
+
+
+
+
 
 
 

@@ -7,11 +7,12 @@ const upload = multer({
     storage: storage });
 
     
-import { addUserC, getUserByIdC, getUsersC, updateUserC,deleteUserC,getUserByDniC,updateUserByDniC } from "../controllers/userController";
+import { addUserC, getUserByIdC, getUsersC, updateUserC,deleteUserC,getUserByDniC,updateUserByDniC,getDashBoardC } from "../controllers/userController";
 import { addStationC, getStationByIdC, getStationsC, updateStationC, deleteStationC } from "../controllers/stationController";
 import { addScooterC, getScooterByIdC, getScootersC, updateScooterC, deleteScooterC } from "../controllers/scooterController";
 import { addRentalC, getRentalByIdC, getRentalsC, updateRentalC, deleteRentalC, getRentalByDniC,makeDevolutionC } from "../controllers/rentalController";
 import { addBonusOrPenaltyC, getBonusOrPenaltyByIdC, getBonusesAndPenaltiesC, updateBonusOrPenaltyC, deleteBonusOrPenaltyC } from "../controllers/bonusAndPenaltyController";
+import { get } from "http";
 
 //Rutas de usuario
 Router.post('/addUser', addUserC);
@@ -51,4 +52,8 @@ Router.get('/bonuses-and-penalties/:bpId', getBonusOrPenaltyByIdC);
 Router.get('/bonuses-and-penalties', getBonusesAndPenaltiesC);
 Router.put('/bonuses-and-penalties/update/:bpId', updateBonusOrPenaltyC);
 Router.delete('/bonuses-and-penalties/delete/:bpId', deleteBonusOrPenaltyC);
+
+//dashboard
+
+Router.get('/dashboard', getDashBoardC);
 export default Router
