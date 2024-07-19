@@ -7,7 +7,7 @@ import { IScooter } from '../interfaces';
 import { Timestamp } from 'firebase/firestore';
 const usersCollection = () => collection(db, 'Users');
 const stationsCollection = () => collection(db, 'Stations');
-
+const rentalsCollection = () => collection(db, 'Rentals');
 export const addRental = async (rental: IRental): Promise<IRental> => {
   try {
     const rentalId = uuidv4();
@@ -62,6 +62,7 @@ export const addRental = async (rental: IRental): Promise<IRental> => {
         bonusMinutes: userData.bonusMinutes,
         lastRentalDate: currentDate.toISOString(),
         rentalCount: (userData.rentalCount || 0) + 1,
+        punishment: false
       }, { merge: true });
 
 
@@ -106,11 +107,13 @@ export const addRental = async (rental: IRental): Promise<IRental> => {
 
 export const updateRentalForDevolution = async (rentalData: any): Promise<any> => {
   try {
+    console.log("entra al servicio de update rental for devolution");
+    console.log(rentalData);
     const { user_dni, id, scooter_identifier, station_name, station_name_devolution, usedMinutes } = rentalData;
 
     const returnDate = new Date().toISOString();
 
-
+   
     const userQuery = query(usersCollection(), where("dni", "==", user_dni));
     const userSnapshot = await getDocs(userQuery);
     if (!userSnapshot.empty) {
@@ -128,38 +131,43 @@ export const updateRentalForDevolution = async (rentalData: any): Promise<any> =
       throw new Error('User not found');
     }
 
-
+    
     const rentalRef = doc(collection(db, 'Rentals'), id);
     await updateDoc(rentalRef, { status: 'completed', returnDate });
 
-
+    
     const stationQuery = query(stationsCollection(), where("name", "==", station_name));
     const stationSnapshot = await getDocs(stationQuery);
     if (!stationSnapshot.empty) {
       const stationId = stationSnapshot.docs[0].id;
       const stationData = stationSnapshot.docs[0].data();
-      const scooters = stationData.scooters || []; 
-
+      const scooters = stationData.scooters || [];
 
       const updatedScooters = scooters.map((scooter: any) => {
         if (scooter.identifier === scooter_identifier) {
-          return { ...scooter, status: 'available' }; 
+          return { ...scooter, status: 'available' };
         }
         return scooter;
       });
 
       await setDoc(doc(stationsCollection(), stationId), { scooters: updatedScooters }, { merge: true });
 
-
+    
       const stationQueryDevolution = query(stationsCollection(), where("name", "==", station_name_devolution));
       const stationSnapshotDevolution = await getDocs(stationQueryDevolution);
       if (!stationSnapshotDevolution.empty) {
         const stationIdDevolution = stationSnapshotDevolution.docs[0].id;
         const stationDataDevolution = stationSnapshotDevolution.docs[0].data();
-        const scootersDevolution = stationDataDevolution.scooters || []; 
+        const scootersDevolution = stationDataDevolution.scooters || [];
 
+        
+        const updatedScootersDevolution = scootersDevolution.map((scooter: any) => {
+          if (scooter.identifier === scooter_identifier) {
+            return { ...scooter, status: 'available' };
+          }
+          return scooter;
+        });
 
-        const updatedScootersDevolution = [...scootersDevolution, { identifier: scooter_identifier, status: 'available' }];
         await setDoc(doc(stationsCollection(), stationIdDevolution), { scooters: updatedScootersDevolution }, { merge: true });
       } else {
         throw new Error('Devolution station not found');
@@ -167,12 +175,12 @@ export const updateRentalForDevolution = async (rentalData: any): Promise<any> =
     } else {
       throw new Error('Station not found');
     }
-
   } catch (error) {
     console.error('Error updating rental for devolution:', error);
     throw new Error('Error updating rental for devolution');
   }
 };
+
 
 
 
@@ -247,3 +255,71 @@ export const deleteRental = async (rentalId: string): Promise<void> => {
     throw new Error('Error deleting rental');
   }
 };
+
+
+import cron from 'node-cron';
+const checkRentalsForPenalties = async () => {
+  try {
+    console.log("verificación de penalidades");
+    const now = new Date();
+    const rentalsQuery = query(rentalsCollection(), where('status', '==', 'active'));
+    const rentalSnapshot = await getDocs(rentalsQuery);
+
+    for (const rentalDoc of rentalSnapshot.docs) {
+      const rentalData = rentalDoc.data();
+      const { user_dni, rentalDate, usedMinutes } = rentalData;
+      const rentalDateTime = new Date(rentalDate);
+      const diffInMinutes = (now.getTime() - rentalDateTime.getTime()) / (1000 * 60);
+
+      if (diffInMinutes > usedMinutes) {
+        const userQuery = query(usersCollection(), where('dni', '==', user_dni));
+        const userSnapshot = await getDocs(userQuery);
+
+        if (!userSnapshot.empty) {
+          const userDoc = userSnapshot.docs[0];
+          const userId = userDoc.id;
+          const userData = userDoc.data();
+
+          await updateDoc(doc(usersCollection(), userId), { punishment: true });
+          console.log(`Usuario con DNI ${user_dni} ha sido penalizado.`);
+        }
+      }
+    }
+
+    const penalizedUsersQuery = query(usersCollection(), where('punishment', '==', true));
+    const penalizedUsersSnapshot = await getDocs(penalizedUsersQuery);
+
+    for (const userDoc of penalizedUsersSnapshot.docs) {
+      const userData = userDoc.data();
+      const { lastRentalDate, dni } = userData;
+      const lastRentalDateTime = new Date(lastRentalDate);
+      const diffInDays = (now.getTime() - lastRentalDateTime.getTime()) / (1000 * 60 * 60 * 24);
+
+      if (diffInDays > 7) {
+        await updateDoc(doc(usersCollection(), userDoc.id), { punishment: false });
+        console.log(`Castigo para el usuario con DNI ${dni} ha sido removido.`);
+      }
+      //para pruebas
+        /*const diffInMinutes = (now.getTime() - lastRentalDateTime.getTime()) / (1000 * 60);
+
+        if (diffInMinutes > 2) {
+          await updateDoc(doc(usersCollection(), userDoc.id), { punishment: false });
+          console.log(`Punishment for user with DNI ${dni} has been removed.`);
+        }*/
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+// Programar la tarea para que se ejecute cada 30 minutos
+//cron.schedule('*/30 * * * *', checkRentalsForPenalties);
+
+// Programar la tarea para que se ejecute cada 2 minutos
+//cron.schedule('*/2 * * * *', checkRentalsForPenalties);
+
+//aqui se resolvera cada 30 segundos para casos de prueba
+//cron.schedule('*/30 * * * * *', checkRentalsForPenalties);
+
+//cada 1 minuto
+//cron.schedule('*/1 * * * *', checkRentalsForPenalties);

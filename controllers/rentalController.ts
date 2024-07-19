@@ -7,8 +7,6 @@ async function addRentalC(req: Request, res: Response): Promise<void> {
   try {
     const rentalData: IRental = req.body.rental;
     const rental = await addRental(rentalData);
-    console.log("esto es en controlador")
-    console.log(rental)
     res.status(HTTP_CODES.SUCCESS).json({ rental });
   } catch (error: any) {
     console.error('Error adding rental:', error);

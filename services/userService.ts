@@ -17,7 +17,8 @@ export const addUser = async (userDni:string): Promise<IUser> => {
       historicMinutesRented:0,
       rentedScooterId:null,
       bonusMinutes:0,
-      punishment:false
+      punishment:false,
+      rentalCount:0
     };
     await setDoc(doc(usersCollection(), userId),cleanUserData);
     return cleanUserData
