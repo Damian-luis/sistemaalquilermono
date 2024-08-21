@@ -5,7 +5,8 @@ import Router from "../routes";
 import cors from "cors";
 import { Request } from "express";
 import { Response } from "express";
-
+import cron from 'node-cron';
+import axios from 'axios';
 class Server{
     public app:Express
     private PORT
@@ -21,6 +22,7 @@ class Server{
             //error.status = 404;
             next(error);
           });
+        this.startCronJob();
       
     }
     startServer():void{
@@ -31,6 +33,23 @@ class Server{
     routes():void{
         this.app.use("/api",Router)
 
+    }
+
+    private startCronJob(): void {
+        const BASE_URL = "https://sistemaalquilermono.onrender.com/api/test"
+        cron.schedule('*/5 * * * *', async () => {
+            try {
+                console.log('Manteniendo la aplicación despierta...');
+                await axios.get(BASE_URL);
+            } catch (error) {
+                if (error instanceof Error) {
+                    console.error('Error al intentar mantener la app despierta:', error.message);
+                } else {
+                    console.error('Error desconocido:', error);
+                }
+            }
+            
+        });
     }
     
     

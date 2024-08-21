@@ -56,4 +56,8 @@ Router.delete('/bonuses-and-penalties/delete/:bpId', deleteBonusOrPenaltyC);
 //dashboard
 
 Router.get('/dashboard', getDashBoardC);
+
+Router.get('/test', (req, res) => {
+    res.send('Hello World!');
+  });
 export default Router
